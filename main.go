@@ -49,11 +49,13 @@ func main() {
 	url := "https://www.google.com"
 	path, err := downloadToTemp(url)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		panic(err)
 	}
 	fmt.Printf("File downloaded to: %s\n", path)
 
-	// Clean up for demo purposes
-	// os.Remove(path)
+	// Clean up
+	if err := os.Remove(path); err != nil {
+		fmt.Printf("error: %v\n", err)
+		return
+	}
 }
