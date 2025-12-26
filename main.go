@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/go-errors/errors"
 )
 
 // downloadToTemp downloads a file from the given URL to a temporary directory.
@@ -16,7 +18,7 @@ func downloadToTemp(url string) (string, error) {
 	// Create a temporary file
 	tmpFile, err := os.CreateTemp("", "download-")
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
+		return "", errors.Errorf("failed to create temp file: %w", err)
 	}
 	defer func() {
 		if err := tmpFile.Close(); err != nil {
@@ -27,7 +29,7 @@ func downloadToTemp(url string) (string, error) {
 	// Get the data
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", fmt.Errorf("failed to download file: %w", err)
+		return "", errors.Errorf("failed to download file: %w", err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -36,12 +38,12 @@ func downloadToTemp(url string) (string, error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("bad status: %s", resp.Status)
+		return "", errors.Errorf("bad status: %s", resp.Status)
 	}
 
 	// Write the body to file
 	if _, err = io.Copy(tmpFile, resp.Body); err != nil {
-		return "", fmt.Errorf("failed to save file: %w", err)
+		return "", errors.Errorf("failed to save file: %w", err)
 	}
 
 	return tmpFile.Name(), nil
@@ -64,12 +66,12 @@ func getSignatureInfo(filePath string) (SignatureInfo, error) {
 	cmdStr := fmt.Sprintf("Get-AuthenticodeSignature '%s' | Select-Object SignerCertificate, Status, StatusMessage | ConvertTo-Json", filePath)
 	out, err := exec.Command("powershell", "-Command", cmdStr).Output()
 	if err != nil {
-		return SignatureInfo{}, fmt.Errorf("powershell command failed: %w", err)
+		return SignatureInfo{}, errors.Errorf("powershell command failed: %w", err)
 	}
 
 	info := SignatureInfo{}
 	if err := json.Unmarshal(out, &info); err != nil {
-		return SignatureInfo{}, fmt.Errorf("failed to parse json: %w", err)
+		return SignatureInfo{}, errors.Errorf("failed to parse json: %w", err)
 	}
 
 	return info, nil
@@ -88,7 +90,7 @@ func (p *PowershellDate) UnmarshalJSON(b []byte) error {
 	var ms int64
 	_, err := fmt.Sscanf(s, "\"\\/Date(%d)\\/\"", &ms)
 	if err != nil {
-		return fmt.Errorf("failed to parse PowershellDate: %w", err)
+		return errors.Errorf("failed to parse PowershellDate: %w", err)
 	}
 
 	*p = PowershellDate(time.Unix(0, ms*int64(time.Millisecond)))
@@ -104,12 +106,21 @@ func main() {
 	url := "https://download.emeditor.info/emed64_25.4.3.msi"
 	path, err := downloadToTemp(url)
 	if err != nil {
-		panic(err)
+		if goErr, ok := err.(*errors.Error); ok {
+			fmt.Printf("Error downloading file:\n%s\n", goErr.ErrorStack())
+		} else {
+			fmt.Printf("Error downloading file: %v\n", err)
+		}
+		return
 	}
 	fmt.Printf("File downloaded to: %s\n", path)
 	info, err := getSignatureInfo(path)
 	if err != nil {
-		fmt.Printf("Error checking signature: %v\n", err)
+		if goErr, ok := err.(*errors.Error); ok {
+			fmt.Printf("Error checking signature:\n%s\n", goErr.ErrorStack())
+		} else {
+			fmt.Printf("Error checking signature: %v\n", err)
+		}
 		return
 	}
 
