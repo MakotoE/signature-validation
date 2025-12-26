@@ -15,22 +15,29 @@ func downloadToTemp(url string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer tmpFile.Close()
+	defer func() {
+		if err := tmpFile.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	// Get the data
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed to download file: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("bad status: %s", resp.Status)
 	}
 
 	// Write the body to file
-	_, err = io.Copy(tmpFile, resp.Body)
-	if err != nil {
+	if _, err = io.Copy(tmpFile, resp.Body); err != nil {
 		return "", fmt.Errorf("failed to save file: %w", err)
 	}
 
