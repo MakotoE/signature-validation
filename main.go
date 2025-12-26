@@ -46,7 +46,7 @@ func downloadToTemp(url string) (string, error) {
 
 func main() {
 	// Example usage
-	url := "https://www.google.com"
+	url := "https://download.emeditor.info/emed64_25.4.3.msi"
 	path, err := downloadToTemp(url)
 	if err != nil {
 		panic(err)
