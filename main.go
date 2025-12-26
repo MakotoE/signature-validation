@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"time"
 )
 
 // downloadToTemp downloads a file from the given URL to a temporary directory.
@@ -49,8 +50,8 @@ func downloadToTemp(url string) (string, error) {
 // SignatureInfo represents the output of Get-AuthenticodeSignature.
 type SignatureInfo struct {
 	SignerCertificate struct {
-		NotAfter  string
-		NotBefore string
+		NotAfter  PowershellDate
+		NotBefore PowershellDate
 		Subject   string
 	}
 	Status        int
@@ -72,6 +73,30 @@ func getSignatureInfo(filePath string) (SignatureInfo, error) {
 	}
 
 	return info, nil
+}
+
+type PowershellDate time.Time
+
+func (p *PowershellDate) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	if s == "null" {
+		return nil
+	}
+
+	// PowerShell date format is "/Date(1775779199000)/"
+	// We need to extract the number
+	var ms int64
+	_, err := fmt.Sscanf(s, "\"\\/Date(%d)\\/\"", &ms)
+	if err != nil {
+		return fmt.Errorf("failed to parse PowershellDate: %w", err)
+	}
+
+	*p = PowershellDate(time.Unix(0, ms*int64(time.Millisecond)))
+	return nil
+}
+
+func (p PowershellDate) String() string {
+	return time.Time(p).Format(time.RFC3339)
 }
 
 func main() {
