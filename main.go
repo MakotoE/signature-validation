@@ -97,38 +97,34 @@ func (p *PowershellDate) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (p PowershellDate) String() string {
-	return time.Time(p).Format(time.RFC3339)
-}
-
-func main() {
+func mainWithError() error {
 	// Example usage
 	url := "https://download.emeditor.info/emed64_25.4.3.msi"
 	path, err := downloadToTemp(url)
 	if err != nil {
-		if goErr, ok := err.(*errors.Error); ok {
-			fmt.Printf("Error downloading file:\n%s\n", goErr.ErrorStack())
-		} else {
-			fmt.Printf("Error downloading file: %v\n", err)
-		}
-		return
+		return err
 	}
 	fmt.Printf("File downloaded to: %s\n", path)
 	info, err := getSignatureInfo(path)
 	if err != nil {
-		if goErr, ok := err.(*errors.Error); ok {
-			fmt.Printf("Error checking signature:\n%s\n", goErr.ErrorStack())
-		} else {
-			fmt.Printf("Error checking signature: %v\n", err)
-		}
-		return
+		return err
 	}
 
 	fmt.Printf("Signature status: %+v\n", info)
 
 	// Clean up
 	if err := os.Remove(path); err != nil {
-		fmt.Printf("error: %v\n", err)
-		return
+		return err
+	}
+	return nil
+}
+
+func main() {
+	if err := mainWithError(); err != nil {
+		var goErr *errors.Error
+		if errors.As(err, &goErr) {
+			fmt.Printf("Error:\n%s\n", goErr.ErrorStack())
+		}
+		os.Exit(1)
 	}
 }
