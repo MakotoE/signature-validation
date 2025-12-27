@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e8e1ec43-56e7-42de-8808-a5cc66e190c3" name="Changes" comment="project" />
+    <list default="true" id="e8e1ec43-56e7-42de-8808-a5cc66e190c3" name="Changes" comment="workspace">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build.yml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -155,6 +157,7 @@
     <MESSAGE value="lint" />
     <MESSAGE value="ValidateSignature" />
     <MESSAGE value="project" />
-    <option name="LAST_COMMIT_MESSAGE" value="project" />
+    <MESSAGE value="workspace" />
+    <option name="LAST_COMMIT_MESSAGE" value="workspace" />
   </component>
 </project>
