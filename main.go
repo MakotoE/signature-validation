@@ -1,0 +1,273 @@
+package main
+
+import (
+	"crypto/x509"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"time"
+
+	"github.com/go-errors/errors"
+)
+
+// downloadToTemp downloads a file from the given URL to a temporary directory.
+// It returns the path to the temporary file.
+func downloadToTemp(url string) (string, error) {
+	// Create a temporary file
+	tmpFile, err := os.CreateTemp("", "download-")
+	if err != nil {
+		return "", errors.Errorf("failed to create temp file: %w", err)
+	}
+	defer func() {
+		if err := tmpFile.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", errors.Errorf("failed to download file: %w", err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Errorf("bad status: %s", resp.Status)
+	}
+
+	// Write the body to file
+	if _, err = io.Copy(tmpFile, resp.Body); err != nil {
+		return "", errors.Errorf("failed to save file: %w", err)
+	}
+
+	return tmpFile.Name(), nil
+}
+
+// SignatureInfo represents the output of Get-AuthenticodeSignature.
+type SignatureInfo struct {
+	SignerCertificate SignerCertificate
+	Status            int
+	StatusMessage     string
+	Path              string
+}
+
+// SignerCertificate represents the signer certificate information.
+type SignerCertificate struct {
+	NotAfter  PowershellDate
+	NotBefore PowershellDate
+	RawData   []byte
+	Subject   SubjectInfo
+}
+
+func (sc *SignerCertificate) UnmarshalJSON(b []byte) error {
+	type Alias SignerCertificate
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(sc),
+	}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+
+	if len(sc.RawData) > 0 {
+		subject, err := ExtractSubjectInfo(sc.RawData)
+		if err != nil {
+			return errors.Errorf("failed to extract subject info: %w", err)
+		}
+		sc.Subject = subject
+	}
+
+	return nil
+}
+
+// SubjectInfo represents the parsed Subject field of a certificate.
+type SubjectInfo struct {
+	CommonName         string
+	Organization       string
+	OrganizationalUnit string
+	Locality           string
+	State              string
+	Country            string
+}
+
+func (s *SubjectInfo) UnmarshalJSON(b []byte) error {
+	// We don't need to unmarshal from string anymore if we have RawData,
+	// but the JSON still contains the Subject string. We can ignore it or
+	// keep it if we want to support both.
+	// For now, let's just do nothing here and let RawData handle it.
+	return nil
+}
+
+// ExtractSubjectInfo extracts SubjectInfo from raw certificate bytes.
+func ExtractSubjectInfo(rawData []byte) (SubjectInfo, error) {
+	cert, err := x509.ParseCertificate(rawData)
+	if err != nil {
+		return SubjectInfo{}, err
+	}
+
+	info := SubjectInfo{
+		CommonName: cert.Subject.CommonName,
+	}
+	if len(cert.Subject.Organization) > 0 {
+		info.Organization = cert.Subject.Organization[0]
+	}
+	if len(cert.Subject.OrganizationalUnit) > 0 {
+		info.OrganizationalUnit = cert.Subject.OrganizationalUnit[0]
+	}
+	if len(cert.Subject.Locality) > 0 {
+		info.Locality = cert.Subject.Locality[0]
+	}
+	if len(cert.Subject.Province) > 0 {
+		info.State = cert.Subject.Province[0]
+	}
+	if len(cert.Subject.Country) > 0 {
+		info.Country = cert.Subject.Country[0]
+	}
+
+	return info, nil
+}
+
+// getSignatureInfo calls Get-AuthenticodeSignature and returns the parsed info.
+func getSignatureInfo(filePath string) (SignatureInfo, error) {
+	cmdStr := fmt.Sprintf("Get-AuthenticodeSignature '%s' | Select-Object @{Name='SignerCertificate'; Expression={$_.SignerCertificate | Select-Object NotAfter, NotBefore, Subject, RawData}}, Status, StatusMessage | ConvertTo-Json", filePath)
+	out, err := exec.Command("powershell", "-Command", cmdStr).Output()
+	if err != nil {
+		return SignatureInfo{}, errors.Errorf("powershell command failed: %w", err)
+	}
+
+	info := SignatureInfo{}
+	if err := json.Unmarshal(out, &info); err != nil {
+		return SignatureInfo{}, errors.Errorf("failed to parse json: %w", err)
+	}
+
+	return info, nil
+}
+
+type PowershellDate time.Time
+
+func (p *PowershellDate) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	if s == "null" {
+		return nil
+	}
+
+	// PowerShell date format is "/Date(1775779199000)/"
+	// We need to extract the number
+	var ms int64
+	_, err := fmt.Sscanf(s, "\"\\/Date(%d)\\/\"", &ms)
+	if err != nil {
+		return errors.Errorf("failed to parse PowershellDate: %w", err)
+	}
+
+	*p = PowershellDate(time.Unix(0, ms*int64(time.Millisecond)))
+	return nil
+}
+
+type ValidationResult struct {
+	Valid  bool   `json:"valid"`
+	Reason string `json:"reason,omitempty"`
+}
+
+// validateSignature validates the signature information.
+func validateSignature(info SignatureInfo) ValidationResult {
+	if info.Status != 0 {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("invalid signature status: %s (status code: %d)", info.StatusMessage, info.Status),
+		}
+	}
+
+	subject := info.SignerCertificate.Subject
+	if subject.CommonName != "Emurasoft, Inc." {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("unexpected Common Name: %s", subject.CommonName),
+		}
+	}
+
+	if subject.Organization != "Emurasoft, Inc." {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("unexpected Organization: %s", subject.Organization),
+		}
+	}
+
+	if subject.State != "Washington" {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("unexpected State: %s", subject.State),
+		}
+	}
+
+	if subject.Country != "US" {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("unexpected Country: %s", subject.Country),
+		}
+	}
+
+	return ValidationResult{
+		Valid: true,
+	}
+}
+
+func mainWithError() (*ValidationResult, error) {
+	// Example usage
+	url := "https://download.emeditor.info/emed64_25.4.3.msi"
+	path, err := downloadToTemp(url)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(os.Stderr, "File downloaded to: %s\n", path)
+
+	info, err := getSignatureInfo(path)
+	if err != nil {
+		return nil, err
+	}
+
+	result := validateSignature(info)
+
+	// Clean up
+	if err := os.Remove(path); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+type ProgramOutput struct {
+	Result *ValidationResult `json:"result,omitempty"`
+	Error  string            `json:"error,omitempty"`
+}
+
+func main() {
+	result, err := mainWithError()
+	output := ProgramOutput{}
+	if err != nil {
+		var goErr *errors.Error
+		if errors.As(err, &goErr) {
+			output.Error = goErr.ErrorStack()
+		} else {
+			output.Error = err.Error()
+		}
+	} else {
+		output.Result = result
+	}
+
+	if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to encode output: %v\n", err)
+		os.Exit(1)
+	}
+
+	if output.Error != "" {
+		os.Exit(1)
+	}
+}
