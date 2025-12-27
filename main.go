@@ -271,6 +271,7 @@ func main() {
 		} else {
 			output.Error = err.Error()
 		}
+		fmt.Fprintf(os.Stderr, "error: %v\n", output.Error)
 	} else {
 		output.Result = result
 	}
