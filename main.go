@@ -172,15 +172,11 @@ func (p *PowershellDate) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
-	// PowerShell date format is "/Date(1775779199000)/"
-	// We need to extract the number
-	var ms int64
-	_, err := fmt.Sscanf(s, "\"\\/Date(%d)\\/\"", &ms)
-	if err != nil {
-		return errors.Errorf("failed to parse PowershellDate: %w", err)
+	var t time.Time
+	if err := json.Unmarshal(b, &t); err != nil {
+		return errors.New(err)
 	}
-
-	*p = PowershellDate(time.Unix(0, ms*int64(time.Millisecond)))
+	*p = PowershellDate(t)
 	return nil
 }
 
