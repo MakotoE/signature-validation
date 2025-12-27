@@ -2,11 +2,23 @@ name: Validate Signature
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ 'main' ]
 
 jobs:
   validate:
     name: Validate
     runs-on: windows-latest
     steps:
-      - run: Get-AuthenticodeSignature C:\Windows\System32\notepad.exe | ConvertTo-Json
+      - name: Download artifact from latest main
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: build.yml
+          branch: main
+          name: signature-validation-windows
+          check_artifacts: true
+          search_artifacts: true
+
+      - name: Run validation
+        run: |
+          .\signature-validation.exe
