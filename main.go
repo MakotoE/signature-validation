@@ -78,7 +78,7 @@ func (sc *SignerCertificate) UnmarshalJSON(b []byte) error {
 	}
 
 	if len(sc.RawData) > 0 {
-		subject, err := ExtractSubjectInfo(sc.RawData)
+		subject, err := extractSubjectInfo(sc.RawData)
 		if err != nil {
 			return errors.Errorf("failed to extract subject info: %w", err)
 		}
@@ -98,16 +98,8 @@ type SubjectInfo struct {
 	Country            string
 }
 
-func (s *SubjectInfo) UnmarshalJSON(b []byte) error {
-	// We don't need to unmarshal from string anymore if we have RawData,
-	// but the JSON still contains the Subject string. We can ignore it or
-	// keep it if we want to support both.
-	// For now, let's just do nothing here and let RawData handle it.
-	return nil
-}
-
-// ExtractSubjectInfo extracts SubjectInfo from raw certificate bytes.
-func ExtractSubjectInfo(rawData []byte) (SubjectInfo, error) {
+// extractSubjectInfo extracts SubjectInfo from raw certificate bytes.
+func extractSubjectInfo(rawData []byte) (SubjectInfo, error) {
 	cert, err := x509.ParseCertificate(rawData)
 	if err != nil {
 		return SubjectInfo{}, err
