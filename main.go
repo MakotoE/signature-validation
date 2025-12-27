@@ -171,6 +171,54 @@ func (p *PowershellDate) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type ValidationResult struct {
+	Valid  bool
+	Reason string
+}
+
+// validateSignature validates the signature information.
+func validateSignature(info SignatureInfo) ValidationResult {
+	if info.Status != 0 {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("invalid signature status: %s (status code: %d)", info.StatusMessage, info.Status),
+		}
+	}
+
+	subject := info.SignerCertificate.Subject
+	if subject.CommonName != "Emurasoft, Inc." {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("unexpected Common Name: %s", subject.CommonName),
+		}
+	}
+
+	if subject.Organization != "Emurasoft, Inc." {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("unexpected Organization: %s", subject.Organization),
+		}
+	}
+
+	if subject.State != "Washington" {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("unexpected State: %s", subject.State),
+		}
+	}
+
+	if subject.Country != "US" {
+		return ValidationResult{
+			Valid:  false,
+			Reason: fmt.Sprintf("unexpected Country: %s", subject.Country),
+		}
+	}
+
+	return ValidationResult{
+		Valid: true,
+	}
+}
+
 func mainWithError() error {
 	// Example usage
 	url := "https://download.emeditor.info/emed64_25.4.3.msi"
@@ -184,7 +232,12 @@ func mainWithError() error {
 		return err
 	}
 
-	fmt.Printf("Signature status: %+v\n", info)
+	result := validateSignature(info)
+	if result.Valid {
+		fmt.Println("Signature is valid.")
+	} else {
+		fmt.Printf("Signature validation failed: %s\n", result.Reason)
+	}
 
 	// Clean up
 	if err := os.Remove(path); err != nil {
