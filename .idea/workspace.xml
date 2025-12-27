@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e8e1ec43-56e7-42de-8808-a5cc66e190c3" name="Changes" comment="lint" />
+    <list default="true" id="e8e1ec43-56e7-42de-8808-a5cc66e190c3" name="Changes" comment="project" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -43,6 +43,7 @@
     &quot;accountId&quot;: &quot;dff5365d-86e5-413a-a7b8-5336cca559da&quot;
   }
 }</component>
+  <component name="GoLinterSelectedExecutable" path="$PROJECT_DIR$/../../../../ProgramData/chocolatey/bin/golangci-lint.exe" />
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
   &quot;associatedIndex&quot;: 6
@@ -70,7 +71,7 @@
     "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "lint",
+    "git-widget-placeholder": "ci",
     "go.sdk.automatically.set": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "C:/Users/MakotoEmura",
@@ -92,6 +93,9 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Build.go build signature-validation" />
+        <item itemvalue="Go Build.go build signature-validation" />
+        <item itemvalue="Go Build.go build signature-validation" />
         <item itemvalue="Go Build.go build signature-validation" />
       </list>
     </recent_temporary>
@@ -146,11 +150,11 @@
     <MESSAGE value="getSignatureInfo" />
     <MESSAGE value="PowershellDate" />
     <MESSAGE value="errors" />
-    <MESSAGE value="project" />
     <MESSAGE value="ExtractSubjectInfo" />
-    <MESSAGE value="ValidateSignature" />
     <MESSAGE value="action" />
     <MESSAGE value="lint" />
-    <option name="LAST_COMMIT_MESSAGE" value="lint" />
+    <MESSAGE value="ValidateSignature" />
+    <MESSAGE value="project" />
+    <option name="LAST_COMMIT_MESSAGE" value="project" />
   </component>
 </project>
