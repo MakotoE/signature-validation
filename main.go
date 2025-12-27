@@ -60,8 +60,8 @@ type SignatureInfo struct {
 
 // SignerCertificate represents the signer certificate information.
 type SignerCertificate struct {
-	NotAfter  PowershellDate
-	NotBefore PowershellDate
+	NotAfter  time.Time
+	NotBefore time.Time
 	RawData   []byte
 	Subject   SubjectInfo
 }
@@ -137,38 +137,31 @@ func ExtractSubjectInfo(rawData []byte) (SubjectInfo, error) {
 
 // getSignatureInfo calls Get-AuthenticodeSignature and returns the parsed info.
 func getSignatureInfo(filePath string) (SignatureInfo, error) {
-	cmdStr := fmt.Sprintf("Get-AuthenticodeSignature '%s' | Select-Object @{Name='SignerCertificate'; Expression={$_.SignerCertificate | Select-Object NotAfter, NotBefore, Subject, RawData}}, Status, StatusMessage | ConvertTo-Json", filePath)
-	out, err := exec.Command("powershell", "-Command", cmdStr).Output()
+	cmdStr := fmt.Sprintf(
+		"Get-AuthenticodeSignature '%s' | Select-Object @{Name='SignerCertificate'; Expression={$_.SignerCertificate | Select-Object NotAfter, NotBefore, Subject, RawData}}, Status, StatusMessage | ConvertTo-Json",
+		filePath,
+	)
+
+	cmd := exec.Command("pwsh",
+		"-NoProfile",
+		"-NonInteractive",
+		"-Command", cmdStr,
+	)
+
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return SignatureInfo{}, errors.Errorf("powershell command failed: %w", err)
+		return SignatureInfo{}, errors.Errorf(
+			"powershell command failed: %w; stdout/stderr:\n%s",
+			err, string(out),
+		)
 	}
 
-	info := SignatureInfo{}
+	var info SignatureInfo
 	if err := json.Unmarshal(out, &info); err != nil {
-		return SignatureInfo{}, errors.Errorf("failed to parse json: %w", err)
+		return SignatureInfo{}, errors.Errorf("failed to parse json: %w; raw:\n%s", err, string(out))
 	}
 
 	return info, nil
-}
-
-type PowershellDate time.Time
-
-func (p *PowershellDate) UnmarshalJSON(b []byte) error {
-	s := string(b)
-	if s == "null" {
-		return nil
-	}
-
-	// PowerShell date format is "/Date(1775779199000)/"
-	// We need to extract the number
-	var ms int64
-	_, err := fmt.Sscanf(s, "\"\\/Date(%d)\\/\"", &ms)
-	if err != nil {
-		return errors.Errorf("failed to parse PowershellDate: %w", err)
-	}
-
-	*p = PowershellDate(time.Unix(0, ms*int64(time.Millisecond)))
-	return nil
 }
 
 type ValidationResult struct {
@@ -258,6 +251,7 @@ func main() {
 		} else {
 			output.Error = err.Error()
 		}
+		fmt.Fprintf(os.Stderr, "error: %v\n", output.Error)
 	} else {
 		output.Result = result
 	}

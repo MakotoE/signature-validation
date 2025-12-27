@@ -1,13 +1,16 @@
 name: Validate Signature
 
 on:
-  push:
-    branches: [ 'main' ]
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
 
 jobs:
   validate:
     name: Validate
     runs-on: windows-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download artifact from latest main
         uses: dawidd6/action-download-artifact@v3
