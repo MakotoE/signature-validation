@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e8e1ec43-56e7-42de-8808-a5cc66e190c3" name="Changes" comment="action" />
+    <list default="true" id="e8e1ec43-56e7-42de-8808-a5cc66e190c3" name="Changes" comment="lint" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -150,6 +150,7 @@
     <MESSAGE value="ExtractSubjectInfo" />
     <MESSAGE value="ValidateSignature" />
     <MESSAGE value="action" />
-    <option name="LAST_COMMIT_MESSAGE" value="action" />
+    <MESSAGE value="lint" />
+    <option name="LAST_COMMIT_MESSAGE" value="lint" />
   </component>
 </project>
