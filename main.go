@@ -74,7 +74,7 @@ func (sc *SignerCertificate) UnmarshalJSON(b []byte) error {
 		Alias: (*Alias)(sc),
 	}
 	if err := json.Unmarshal(b, &aux); err != nil {
-		return err
+		return errors.New(err)
 	}
 
 	if len(sc.RawData) > 0 {
@@ -110,7 +110,7 @@ func (s *SubjectInfo) UnmarshalJSON(b []byte) error {
 func ExtractSubjectInfo(rawData []byte) (SubjectInfo, error) {
 	cert, err := x509.ParseCertificate(rawData)
 	if err != nil {
-		return SubjectInfo{}, err
+		return SubjectInfo{}, errors.New(err)
 	}
 
 	info := SubjectInfo{
@@ -238,7 +238,7 @@ func mainWithError() (*ValidationResult, error) {
 
 	// Clean up
 	if err := os.Remove(path); err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 	return &result, nil
 }
