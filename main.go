@@ -172,8 +172,8 @@ func (p *PowershellDate) UnmarshalJSON(b []byte) error {
 }
 
 type ValidationResult struct {
-	Valid  bool
-	Reason string
+	Valid  bool   `json:"valid"`
+	Reason string `json:"reason,omitempty"`
 }
 
 // validateSignature validates the signature information.
@@ -219,39 +219,55 @@ func validateSignature(info SignatureInfo) ValidationResult {
 	}
 }
 
-func mainWithError() error {
+func mainWithError() (*ValidationResult, error) {
 	// Example usage
 	url := "https://download.emeditor.info/emed64_25.4.3.msi"
 	path, err := downloadToTemp(url)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Printf("File downloaded to: %s\n", path)
+
+	fmt.Fprintf(os.Stderr, "File downloaded to: %s\n", path)
+
 	info, err := getSignatureInfo(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	result := validateSignature(info)
-	if result.Valid {
-		fmt.Println("Signature is valid.")
-	} else {
-		fmt.Printf("Signature validation failed: %s\n", result.Reason)
-	}
 
 	// Clean up
 	if err := os.Remove(path); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return &result, nil
+}
+
+type ProgramOutput struct {
+	Result *ValidationResult `json:"result,omitempty"`
+	Error  string            `json:"error,omitempty"`
 }
 
 func main() {
-	if err := mainWithError(); err != nil {
+	result, err := mainWithError()
+	output := ProgramOutput{}
+	if err != nil {
 		var goErr *errors.Error
 		if errors.As(err, &goErr) {
-			fmt.Printf("Error:\n%s\n", goErr.ErrorStack())
+			output.Error = goErr.ErrorStack()
+		} else {
+			output.Error = err.Error()
 		}
+	} else {
+		output.Result = result
+	}
+
+	if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to encode output: %v\n", err)
+		os.Exit(1)
+	}
+
+	if output.Error != "" {
 		os.Exit(1)
 	}
 }
