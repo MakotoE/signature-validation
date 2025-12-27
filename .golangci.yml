@@ -1,0 +1,25 @@
+version: "2"
+linters:
+  enable:
+    - copyloopvar
+    - err113
+    - errname
+    - fatcontext
+    - gocheckcompilerdirectives
+    - goconst
+    - gocritic
+    - gocyclo
+    - intrange
+    - mirror
+    - nilnil
+    - nolintlint
+    - nosprintfhostport
+    - prealloc
+    - predeclared
+    - reassign
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+    - wrapcheck
