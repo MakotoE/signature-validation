@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e8e1ec43-56e7-42de-8808-a5cc66e190c3" name="Changes" comment="project">
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
-    </list>
+    <list default="true" id="e8e1ec43-56e7-42de-8808-a5cc66e190c3" name="Changes" comment="ExtractSubjectInfo" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -149,6 +147,7 @@
     <MESSAGE value="PowershellDate" />
     <MESSAGE value="errors" />
     <MESSAGE value="project" />
-    <option name="LAST_COMMIT_MESSAGE" value="project" />
+    <MESSAGE value="ExtractSubjectInfo" />
+    <option name="LAST_COMMIT_MESSAGE" value="ExtractSubjectInfo" />
   </component>
 </project>

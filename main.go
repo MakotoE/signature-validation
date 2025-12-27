@@ -53,15 +53,44 @@ func downloadToTemp(url string) (string, error) {
 
 // SignatureInfo represents the output of Get-AuthenticodeSignature.
 type SignatureInfo struct {
-	SignerCertificate struct {
-		NotAfter  PowershellDate
-		NotBefore PowershellDate
-		RawData   string
-		Subject   SubjectInfo
+	SignerCertificate SignerCertificate
+	Status            int
+	StatusMessage     string
+	Path              string
+}
+
+// SignerCertificate represents the signer certificate information.
+type SignerCertificate struct {
+	NotAfter  PowershellDate
+	NotBefore PowershellDate
+	RawData   string
+	Subject   SubjectInfo
+}
+
+func (sc *SignerCertificate) UnmarshalJSON(b []byte) error {
+	type Alias SignerCertificate
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(sc),
 	}
-	Status        int
-	StatusMessage string
-	Path          string
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+
+	if sc.RawData != "" {
+		rawData, err := base64.StdEncoding.DecodeString(sc.RawData)
+		if err != nil {
+			return errors.Errorf("failed to decode raw cert data: %w", err)
+		}
+		subject, err := ExtractSubjectInfo(rawData)
+		if err != nil {
+			return errors.Errorf("failed to extract subject info: %w", err)
+		}
+		sc.Subject = subject
+	}
+
+	return nil
 }
 
 // SubjectInfo represents the parsed Subject field of a certificate.
@@ -122,18 +151,6 @@ func getSignatureInfo(filePath string) (SignatureInfo, error) {
 	info := SignatureInfo{}
 	if err := json.Unmarshal(out, &info); err != nil {
 		return SignatureInfo{}, errors.Errorf("failed to parse json: %w", err)
-	}
-
-	if info.SignerCertificate.RawData != "" {
-		rawData, err := base64.StdEncoding.DecodeString(info.SignerCertificate.RawData)
-		if err != nil {
-			return SignatureInfo{}, errors.Errorf("failed to decode raw cert data: %w", err)
-		}
-		subject, err := ExtractSubjectInfo(rawData)
-		if err != nil {
-			return SignatureInfo{}, errors.Errorf("failed to extract subject info: %w", err)
-		}
-		info.SignerCertificate.Subject = subject
 	}
 
 	return info, nil
