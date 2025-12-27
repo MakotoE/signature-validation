@@ -137,7 +137,7 @@ func ExtractSubjectInfo(rawData []byte) (SubjectInfo, error) {
 
 // getSignatureInfo calls Get-AuthenticodeSignature and returns the parsed info.
 func getSignatureInfo(filePath string) (SignatureInfo, error) {
-	cmdStr := fmt.Sprintf("Get-AuthenticodeSignature '%s' | Select-Object @{Name='SignerCertificate'; Expression={$_.SignerCertificate | Select-Object NotAfter, NotBefore, Subject, RawData}}, Status, StatusMessage | ConvertTo-Json", filePath)
+	cmdStr := fmt.Sprintf("Get-AuthenticodeSignature C:\\Windows\\System32\\notepad.exe | ConvertTo-Json", filePath)
 	out, err := exec.Command("powershell", "-Command", cmdStr).Output()
 	if err != nil {
 		return SignatureInfo{}, errors.Errorf("powershell command failed: %w", err)
