@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -63,7 +62,7 @@ type SignatureInfo struct {
 type SignerCertificate struct {
 	NotAfter  PowershellDate
 	NotBefore PowershellDate
-	RawData   string
+	RawData   []byte
 	Subject   SubjectInfo
 }
 
@@ -78,12 +77,8 @@ func (sc *SignerCertificate) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	if sc.RawData != "" {
-		rawData, err := base64.StdEncoding.DecodeString(sc.RawData)
-		if err != nil {
-			return errors.Errorf("failed to decode raw cert data: %w", err)
-		}
-		subject, err := ExtractSubjectInfo(rawData)
+	if len(sc.RawData) > 0 {
+		subject, err := ExtractSubjectInfo(sc.RawData)
 		if err != nil {
 			return errors.Errorf("failed to extract subject info: %w", err)
 		}
@@ -142,7 +137,7 @@ func ExtractSubjectInfo(rawData []byte) (SubjectInfo, error) {
 
 // getSignatureInfo calls Get-AuthenticodeSignature and returns the parsed info.
 func getSignatureInfo(filePath string) (SignatureInfo, error) {
-	cmdStr := fmt.Sprintf("Get-AuthenticodeSignature '%s' | Select-Object @{Name='SignerCertificate'; Expression={$_.SignerCertificate | Select-Object NotAfter, NotBefore, Subject, @{Name='RawData'; Expression={[Convert]::ToBase64String($_.RawData)}}}}, Status, StatusMessage | ConvertTo-Json", filePath)
+	cmdStr := fmt.Sprintf("Get-AuthenticodeSignature '%s' | Select-Object @{Name='SignerCertificate'; Expression={$_.SignerCertificate | Select-Object NotAfter, NotBefore, Subject, RawData}}, Status, StatusMessage | ConvertTo-Json", filePath)
 	out, err := exec.Command("powershell", "-Command", cmdStr).Output()
 	if err != nil {
 		return SignatureInfo{}, errors.Errorf("powershell command failed: %w", err)
