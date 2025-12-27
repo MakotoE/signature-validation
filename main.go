@@ -142,10 +142,9 @@ func getSignatureInfo(filePath string) (SignatureInfo, error) {
 		filePath,
 	)
 
-	cmd := exec.Command("powershell.exe",
+	cmd := exec.Command("pwsh",
 		"-NoProfile",
 		"-NonInteractive",
-		"-ExecutionPolicy", "Bypass",
 		"-Command", cmdStr,
 	)
 
