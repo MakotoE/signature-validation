@@ -138,7 +138,7 @@ func ExtractSubjectInfo(rawData []byte) (SubjectInfo, error) {
 // getSignatureInfo calls Get-AuthenticodeSignature and returns the parsed info.
 func getSignatureInfo(filePath string) (SignatureInfo, error) {
 	cmdStr := fmt.Sprintf(
-		"Get-AuthenticodeSignature '%s' | ConvertTo-Json",
+		"Get-AuthenticodeSignature '%s' | Select-Object @{Name='SignerCertificate'; Expression={$_.SignerCertificate | Select-Object NotAfter, NotBefore, Subject, RawData}}, Status, StatusMessage | ConvertTo-Json",
 		filePath,
 	)
 
