@@ -60,8 +60,8 @@ type SignatureInfo struct {
 
 // SignerCertificate represents the signer certificate information.
 type SignerCertificate struct {
-	NotAfter  PowershellDate
-	NotBefore PowershellDate
+	NotAfter  time.Time
+	NotBefore time.Time
 	RawData   []byte
 	Subject   SubjectInfo
 }
@@ -162,22 +162,6 @@ func getSignatureInfo(filePath string) (SignatureInfo, error) {
 	}
 
 	return info, nil
-}
-
-type PowershellDate time.Time
-
-func (p *PowershellDate) UnmarshalJSON(b []byte) error {
-	s := string(b)
-	if s == "null" {
-		return nil
-	}
-
-	var t time.Time
-	if err := json.Unmarshal(b, &t); err != nil {
-		return errors.New(err)
-	}
-	*p = PowershellDate(t)
-	return nil
 }
 
 type ValidationResult struct {
