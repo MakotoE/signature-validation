@@ -137,15 +137,29 @@ func ExtractSubjectInfo(rawData []byte) (SubjectInfo, error) {
 
 // getSignatureInfo calls Get-AuthenticodeSignature and returns the parsed info.
 func getSignatureInfo(filePath string) (SignatureInfo, error) {
-	cmdStr := fmt.Sprintf("Get-AuthenticodeSignature C:\\Windows\\System32\\notepad.exe | ConvertTo-Json", filePath)
-	out, err := exec.Command("powershell", "-Command", cmdStr).Output()
+	cmdStr := fmt.Sprintf(
+		"Get-AuthenticodeSignature '%s' | ConvertTo-Json",
+		filePath,
+	)
+
+	cmd := exec.Command("powershell.exe",
+		"-NoProfile",
+		"-NonInteractive",
+		"-ExecutionPolicy", "Bypass",
+		"-Command", cmdStr,
+	)
+
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return SignatureInfo{}, errors.Errorf("powershell command failed: %w", err)
+		return SignatureInfo{}, errors.Errorf(
+			"powershell command failed: %w; stdout/stderr:\n%s",
+			err, string(out),
+		)
 	}
 
-	info := SignatureInfo{}
+	var info SignatureInfo
 	if err := json.Unmarshal(out, &info); err != nil {
-		return SignatureInfo{}, errors.Errorf("failed to parse json: %w", err)
+		return SignatureInfo{}, errors.Errorf("failed to parse json: %w; raw:\n%s", err, string(out))
 	}
 
 	return info, nil
