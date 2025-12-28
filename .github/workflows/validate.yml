@@ -1,16 +1,13 @@
 name: Validate Signature
 
 on:
-  workflow_run:
-    workflows: ["Build"]
-    types:
-      - completed
+  schedule:
+    - cron: '0 * * * *'
 
 jobs:
   validate:
     name: Validate
     runs-on: windows-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
     steps:
@@ -36,7 +33,7 @@ jobs:
         run: |
           $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH-mm-ssZ")
           $filename = "validation-$timestamp.json"
-          .\signature-validation.exe > $filename
+          .\signature-validation.exe | Tee-Object -FilePath $filename
           
           # Sign the commit with GitHub's key by using the GitHub API
           $content = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("$filename"))
