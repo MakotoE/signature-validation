@@ -31,15 +31,16 @@ jobs:
           search_artifacts: true
 
       - name: Run validation and push results
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH-mm-ssZ")
-          $filename = "validation-$timestamp.log"
+          $filename = "validation-$timestamp.json"
           .\signature-validation.exe > $filename
           
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git checkout validation-results
-          git add $filename
-          git commit -m "Add validation result: $filename"
-          git push origin validation-results
+          # Sign the commit with GitHub's key by using the GitHub API
+          $content = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("$filename"))
+          gh api --method PUT "repos/${{ github.repository }}/contents/$filename" `
+            -f message="Add validation result: $timestamp" `
+            -f content="$content" `
+            -f branch="validation-results"
