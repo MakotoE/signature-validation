@@ -31,13 +31,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH-mm-ssZ")
-          $filename = "validation-$timestamp.json"
-          .\signature-validation.exe | Tee-Object -FilePath $filename
+          .\signature-validation.exe | Tee-Object -FilePath 'status.json'
           
           # Sign the commit with GitHub's key by using the GitHub API
-          $content = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("$filename"))
-          gh api --method PUT "repos/${{ github.repository }}/contents/$filename" `
+          $content = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("status.json"))
+          gh api --method PUT "repos/${{ github.repository }}/contents/status.json" `
             -f message="Add validation result: $timestamp" `
             -f content="$content" `
             -f branch="validation-results"
