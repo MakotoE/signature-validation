@@ -12,6 +12,12 @@ jobs:
     runs-on: windows-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
       - name: Download artifact from latest main
         uses: dawidd6/action-download-artifact@v3
         with:
@@ -22,6 +28,16 @@ jobs:
           check_artifacts: true
           search_artifacts: true
 
-      - name: Run validation
+      - name: Run validation and push results
         run: |
-          .\signature-validation.exe
+          $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH-mm-ssZ")
+          $filename = "validation-$timestamp.log"
+          .\signature-validation.exe > $filename
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git checkout validation-results
+          git add $filename
+          git commit -m "Add validation result: $filename"
+          git push origin validation-results
