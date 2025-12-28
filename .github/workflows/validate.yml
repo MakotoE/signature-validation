@@ -41,5 +41,5 @@ jobs:
           
           git checkout validation-results
           git add $filename
-          git commit -m "Add validation result: $filename"
+          git commit -m "Add validation result: $timestamp"
           git push origin validation-results
