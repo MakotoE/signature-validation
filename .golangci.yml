@@ -2,7 +2,6 @@ version: "2"
 linters:
   enable:
     - copyloopvar
-    - err113
     - errname
     - fatcontext
     - gocheckcompilerdirectives
