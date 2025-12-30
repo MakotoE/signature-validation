@@ -95,6 +95,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
+
+            // Check if an open issue with "signature validation" in the title already exists
+            const q = `repo:${owner}/${repo} "signature validation" in:title is:issue is:open`;
+            const { data: search } = await github.rest.search.issuesAndPullRequests({ q });
+
+            if (search.total_count > 0) {
+              core.info('An open "signature validation" issue already exists. Skipping issue creation.');
+              return;
+            }
+
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
 
             const reason = process.env.VALIDATION_REASON || 'Unknown reason';
@@ -125,3 +135,4 @@ jobs:
               title: '⚠️ Signature validation failed',
               body,
             });
+      
