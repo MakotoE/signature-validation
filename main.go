@@ -245,7 +245,7 @@ type ProgramOutput struct {
 func main() {
 	result, err := mainWithError()
 	output := ProgramOutput{
-		Time: time.Now(),
+		Time: time.Now().UTC(),
 	}
 	if err != nil {
 		var goErr *errors.Error
