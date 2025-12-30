@@ -17,19 +17,21 @@ import (
 // ClickEmEditorDownload navigates to https://www.emeditor.com/,
 // clicks the "Download Now" span, and returns the new URL.
 func ClickEmEditorDownload(page playwright.Page) (string, error) {
-	if _, err := page.Goto("https://www.emeditor.com/"); err != nil {
+	if _, err := page.Goto("https://www.emeditor.com/download/"); err != nil {
 		return "", fmt.Errorf("failed to navigate to emeditor.com: %w", err)
 	}
 
-	// Wait for navigation caused by clicking "Download Now".
-	response, err := page.ExpectNavigation(func() error {
-		return page.Click("text=Download Now")
-	})
+	// Get the URL on the install link
+	href, err := page.Locator("text=64-bit Installer").GetAttribute("href")
 	if err != nil {
-		return "", fmt.Errorf("failed to click 'Download Now' or wait for navigation: %w", err)
+		return "", fmt.Errorf("failed to read href for '64-bit Installer': %w", err)
+	}
+	if href == "" {
+		return "", fmt.Errorf("'64-bit Installer' link has no href")
 	}
 
-	return response.URL(), nil
+	// After navigation completes, return the current page URL.
+	return href, nil
 }
 
 // GetDownloadLink clicks on the Download Now button and returns the location of the redirect.
@@ -267,9 +269,16 @@ func validateSignature(info SignatureInfo) ValidationResult {
 }
 
 func mainWithError() (*ValidationResult, error) {
-	// Example usage
-	url := "https://download.emeditor.info/emed64_25.4.3.msi"
-	path, err := downloadToTemp(url)
+	fmt.Fprintf(os.Stderr, "Getting download link\n")
+
+	downloadURL, err := GetDownloadLink()
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(os.Stderr, "Downloading from %s\n", downloadURL)
+
+	path, err := downloadToTemp(downloadURL)
 	if err != nil {
 		return nil, err
 	}
