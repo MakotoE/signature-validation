@@ -14,9 +14,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
             await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Test issue`,
-              body: `See run: ${context.server_url}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n@MakotoE`
+              owner,
+              repo,
+              title: 'Test issue',
+              body: `See run: ${runUrl}\n@MakotoE`,
             });
