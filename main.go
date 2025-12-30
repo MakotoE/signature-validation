@@ -13,6 +13,10 @@ import (
 	"github.com/go-errors/errors"
 )
 
+var client = &http.Client{
+	Timeout: 10 * time.Second,
+}
+
 // downloadToTemp downloads a file from the given URL to a temporary directory.
 // It returns the path to the temporary file.
 func downloadToTemp(url string) (string, error) {
@@ -28,7 +32,7 @@ func downloadToTemp(url string) (string, error) {
 	}()
 
 	// Get the data
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return "", errors.Errorf("failed to download file: %w", err)
 	}
