@@ -11,7 +11,57 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/playwright-community/playwright-go"
 )
+
+// ClickEmEditorDownload navigates to https://www.emeditor.com/,
+// clicks the "Download Now" span, and returns the new URL.
+func ClickEmEditorDownload(page playwright.Page) (string, error) {
+	if _, err := page.Goto("https://www.emeditor.com/"); err != nil {
+		return "", fmt.Errorf("failed to navigate to emeditor.com: %w", err)
+	}
+
+	// Wait for navigation caused by clicking "Download Now".
+	response, err := page.ExpectNavigation(func() error {
+		return page.Click("text=Download Now")
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to click 'Download Now' or wait for navigation: %w", err)
+	}
+
+	return response.URL(), nil
+}
+
+// GetDownloadLink clicks on the Download Now button and returns the location of the redirect.
+func GetDownloadLink() (string, error) {
+	pw, err := playwright.Run()
+	if err != nil {
+		return "", errors.Errorf("could not start Playwright: %w", err)
+	}
+	defer func() {
+		if err := pw.Stop(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	browser, err := pw.Chromium.Launch()
+	if err != nil {
+		return "", errors.Errorf("could not launch browser: %w", err)
+	}
+	defer func() {
+		if err := browser.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	page, err := browser.NewPage()
+	if err != nil {
+		return "", errors.Errorf("could not create page: %w", err)
+	}
+
+	// Run the download click flow; ignore the URL, only surface errors.
+	return ClickEmEditorDownload(page)
+}
 
 var client = &http.Client{
 	Timeout: 20 * time.Second,
