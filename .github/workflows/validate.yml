@@ -22,23 +22,24 @@ jobs:
       - name: Download artifact from latest main
         uses: dawidd6/action-download-artifact@v3
         with:
-          github_token: ${{secrets.GITHUB_TOKEN}}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           workflow: build.yml
           branch: main
           name: signature-validation-windows
           check_artifacts: true
           search_artifacts: true
 
-      - name: Run validation and push results
+      - name: Run validation
         id: run_validation
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $output = .\signature-validation.exe
-          $output | Write-Output
+          $output | Out-File -FilePath status.json -Encoding utf8
+          $output
 
-          # Parse JSON output
-          $obj = $output | ConvertFrom-Json
+      - name: Parse validation result
+        id: parse_result
+        run: |
+          $obj = Get-Content status.json | ConvertFrom-Json
 
           $errorOccurred = $false
           $validationFailed = $false
@@ -52,51 +53,62 @@ jobs:
             $reason = $obj.result.reason
           }
 
-          # Expose values to later steps
-          "error_occurred=$errorOccurred" >> $env:GITHUB_OUTPUT
+          "error_occurred=$errorOccurred"     >> $env:GITHUB_OUTPUT
           "validation_failed=$validationFailed" >> $env:GITHUB_OUTPUT
-          "validation_reason=$reason" >> $env:GITHUB_OUTPUT
+          "validation_reason=$reason"         >> $env:GITHUB_OUTPUT
 
-          # Sign the commit with GitHub's key by using the GitHub API
-          $bytes = [System.Text.Encoding]::UTF8.GetBytes($output)
-          $content = [Convert]::ToBase64String($bytes)
+      - name: Update status.json in validation-results
+        id: update_status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const branch = 'validation-results';
+            const path = 'status.json';
 
-          # Get the current SHA if the file exists
-          $sha = ""
-          try {
-            $resp = gh api "repos/${{ github.repository }}/contents/status.json?ref=validation-results" | ConvertFrom-Json
-            $sha = $resp.sha
-          } catch {
-            Write-Host "File status.json does not exist yet or branch validation-results does not exist."
-          }
+            const content = fs.readFileSync('status.json', 'utf8');
+            const encoded = Buffer.from(content, 'utf8').toString('base64');
 
-          # Update status file
-          if ($sha) {
-            gh api --method PUT "repos/${{ github.repository }}/contents/status.json" `
-              -f message="Set validation result" `
-              -f content="$content" `
-              -f branch="validation-results" `
-              -f sha="$sha"
-          } else {
-            gh api --method PUT "repos/${{ github.repository }}/contents/status.json" `
-              -f message="Set validation result" `
-              -f content="$content" `
-              -f branch="validation-results"
-          }
+            let sha;
+            try {
+              const { data: file } = await github.rest.repos.getContent({
+                owner,
+                repo,
+                path,
+                ref: branch,
+              });
+              if (!Array.isArray(file)) {
+                sha = file.sha;
+              }
+            } catch (error) {
+              core.info('status.json or branch does not exist yet; will create it.');
+            }
+
+            await github.rest.repos.createOrUpdateFileContents({
+              owner,
+              repo,
+              path,
+              message: 'Set validation result',
+              content: encoded,
+              branch,
+              sha,
+            });
 
       - name: Create issue on failed validation
-        if: ${{ steps.run_validation.outputs.error_occurred == 'True' || steps.run_validation.outputs.validation_failed == 'True' }}
+        if: ${{ steps.parse_result.outputs.error_occurred == 'True' || steps.parse_result.outputs.validation_failed == 'True' }}
         uses: actions/github-script@v7
         env:
-          VALIDATION_REASON: ${{ steps.run_validation.outputs.validation_reason }}
-          ERROR_OCCURRED: ${{ steps.run_validation.outputs.error_occurred }}
-          VALIDATION_FAILED: ${{ steps.run_validation.outputs.validation_failed }}
+          VALIDATION_REASON:   ${{ steps.parse_result.outputs.validation_reason }}
+          ERROR_OCCURRED:      ${{ steps.parse_result.outputs.error_occurred }}
+          VALIDATION_FAILED:   ${{ steps.parse_result.outputs.validation_failed }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
 
-            // Check if an open issue with "signature validation" in the title already exists
+            // Check for existing issue
             const q = `repo:${owner}/${repo} "signature validation" in:title is:issue is:open`;
             const { data: search } = await github.rest.search.issuesAndPullRequests({ q });
 
@@ -124,7 +136,7 @@ jobs:
                 `Run: ${runUrl}`;
             } else {
               body =
-                `@MakotoE, there was an issue with the workflow run\n` +
+                `@MakotoE, there was an issue with the workflow run.\n` +
                 `Details: ${reason}\n` +
                 `Run: ${runUrl}`;
             }
