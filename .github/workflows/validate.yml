@@ -1,8 +1,9 @@
 name: Validate Signature
 
 on:
-  schedule:
-    - cron: '0 * * * *'
+  push:
+    branches:
+      - '*'
 
 jobs:
   validate:
@@ -40,8 +41,8 @@ jobs:
           # Parse JSON output
           $obj = $output | ConvertFrom-Json
 
-          $shouldCreateIssue = $false
-          $reason = ""
+          $shouldCreateIssue = $true
+          $reason = "Test reason"
 
           if ($obj.error) {
             $shouldCreateIssue = $true
