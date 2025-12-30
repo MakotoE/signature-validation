@@ -40,19 +40,21 @@ jobs:
           # Parse JSON output
           $obj = $output | ConvertFrom-Json
 
-          $shouldCreateIssue = $false
+          $errorOccurred = $false
+          $validationFailed = $false
           $reason = ""
 
           if ($obj.error) {
-            $shouldCreateIssue = $true
+            $errorOccurred = $true
             $reason = $obj.error
           } elseif ($obj.result -and $obj.result.valid -eq $false) {
-            $shouldCreateIssue = $true
+            $validationFailed = $true
             $reason = $obj.result.reason
           }
 
           # Expose values to later steps
-          "should_create_issue=$shouldCreateIssue" >> $env:GITHUB_OUTPUT
+          "error_occurred=$errorOccurred" >> $env:GITHUB_OUTPUT
+          "validation_failed=$validationFailed" >> $env:GITHUB_OUTPUT
           "validation_reason=$reason" >> $env:GITHUB_OUTPUT
 
           # Sign the commit with GitHub's key by using the GitHub API
@@ -83,20 +85,43 @@ jobs:
           }
 
       - name: Create issue on failed validation
-        if: steps.run_validation.outputs.should_create_issue == 'True'
+        if: ${{ steps.run_validation.outputs.error_occurred == 'True' || steps.run_validation.outputs.validation_failed == 'True' }}
         uses: actions/github-script@v7
         env:
           VALIDATION_REASON: ${{ steps.run_validation.outputs.validation_reason }}
+          ERROR_OCCURRED: ${{ steps.run_validation.outputs.error_occurred }}
+          VALIDATION_FAILED: ${{ steps.run_validation.outputs.validation_failed }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
             const reason = process.env.VALIDATION_REASON || 'Unknown reason';
+            const errorOccurred = process.env.ERROR_OCCURRED === 'True';
+            const validationFailed = process.env.VALIDATION_FAILED === 'True';
+
+            let body;
+            if (errorOccurred) {
+              body =
+                `@MakotoE, an error occurred while running signature validation.\n` +
+                `Error: ${reason}\n` +
+                `Run: ${runUrl}`;
+            } else if (validationFailed) {
+              body =
+                `@MakotoE, signature validation failed.\n` +
+                `Reason: ${reason}\n` +
+                `Run: ${runUrl}`;
+            } else {
+              body =
+                `@MakotoE, there was an issue with the workflow run\n` +
+                `Details: ${reason}\n` +
+                `Run: ${runUrl}`;
+            }
 
             await github.rest.issues.create({
               owner,
               repo,
               title: '⚠️ Signature validation failed',
-              body: `@MakotoE, signature validation failed.\nReason: ${reason}\nRun: ${runUrl}`,
+              body,
             });
