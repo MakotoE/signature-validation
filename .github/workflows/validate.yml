@@ -38,7 +38,25 @@ jobs:
           $bytes = [System.Text.Encoding]::UTF8.GetBytes($output)
           $content = [Convert]::ToBase64String($bytes)
           
-          gh api --method PUT "repos/${{ github.repository }}/contents/status.json" `
-            -f message="Set validation result" `
-            -f content="$content" `
-            -f branch="validation-results"
+          # Get the current SHA if the file exists
+          $sha = ""
+          try {
+            $resp = gh api "repos/${{ github.repository }}/contents/status.json?ref=validation-results" | ConvertFrom-Json
+            $sha = $resp.sha
+          } catch {
+            Write-Host "File status.json does not exist yet or branch validation-results does not exist."
+          }
+
+          # Update status file
+          if ($sha) {
+            gh api --method PUT "repos/${{ github.repository }}/contents/status.json" `
+              -f message="Set validation result" `
+              -f content="$content" `
+              -f branch="validation-results" `
+              -f sha="$sha"
+          } else {
+            gh api --method PUT "repos/${{ github.repository }}/contents/status.json" `
+              -f message="Set validation result" `
+              -f content="$content" `
+              -f branch="validation-results"
+          }
