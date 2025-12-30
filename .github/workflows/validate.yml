@@ -10,6 +10,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+      issues: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,16 +30,35 @@ jobs:
           search_artifacts: true
 
       - name: Run validation and push results
+        id: run_validation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $output = .\signature-validation.exe
           $output | Write-Output
-          
+
+          # Parse JSON output
+          $obj = $output | ConvertFrom-Json
+
+          $shouldCreateIssue = $false
+          $reason = ""
+
+          if ($obj.error) {
+            $shouldCreateIssue = $true
+            $reason = $obj.error
+          } elseif ($obj.result -and $obj.result.valid -eq $false) {
+            $shouldCreateIssue = $true
+            $reason = $obj.result.reason
+          }
+
+          # Expose values to later steps
+          "should_create_issue=$shouldCreateIssue" >> $env:GITHUB_OUTPUT
+          "validation_reason=$reason" >> $env:GITHUB_OUTPUT
+
           # Sign the commit with GitHub's key by using the GitHub API
           $bytes = [System.Text.Encoding]::UTF8.GetBytes($output)
           $content = [Convert]::ToBase64String($bytes)
-          
+
           # Get the current SHA if the file exists
           $sha = ""
           try {
@@ -60,3 +81,22 @@ jobs:
               -f content="$content" `
               -f branch="validation-results"
           }
+
+      - name: Create issue on failed validation
+        if: steps.run_validation.outputs.should_create_issue == 'True'
+        uses: actions/github-script@v7
+        env:
+          VALIDATION_REASON: ${{ steps.run_validation.outputs.validation_reason }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const reason = process.env.VALIDATION_REASON || 'Unknown reason';
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: 'Signature validation failed',
+              body: `Validation failed.\nReason: ${reason}\nRun: ${runUrl}\n@MakotoE`,
+            });
