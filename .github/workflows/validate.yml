@@ -1,4 +1,4 @@
-name: Validate Signature
+name: Validate signature
 
 on:
   schedule:
@@ -97,6 +97,6 @@ jobs:
             await github.rest.issues.create({
               owner,
               repo,
-              title: 'Signature validation failed',
-              body: `Validation failed.\nReason: ${reason}\nRun: ${runUrl}\n@MakotoE`,
+              title: '⚠️ Signature validation failed',
+              body: `@MakotoE, signature validation failed.\nReason: ${reason}\nRun: ${runUrl}`,
             });
