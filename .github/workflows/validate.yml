@@ -1,4 +1,4 @@
-name: Validate Signature
+name: Validate signature
 
 on:
   schedule:
@@ -10,6 +10,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+      issues: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,16 +30,37 @@ jobs:
           search_artifacts: true
 
       - name: Run validation and push results
+        id: run_validation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $output = .\signature-validation.exe
           $output | Write-Output
-          
+
+          # Parse JSON output
+          $obj = $output | ConvertFrom-Json
+
+          $errorOccurred = $false
+          $validationFailed = $false
+          $reason = ""
+
+          if ($obj.error) {
+            $errorOccurred = $true
+            $reason = $obj.error
+          } elseif ($obj.result -and $obj.result.valid -eq $false) {
+            $validationFailed = $true
+            $reason = $obj.result.reason
+          }
+
+          # Expose values to later steps
+          "error_occurred=$errorOccurred" >> $env:GITHUB_OUTPUT
+          "validation_failed=$validationFailed" >> $env:GITHUB_OUTPUT
+          "validation_reason=$reason" >> $env:GITHUB_OUTPUT
+
           # Sign the commit with GitHub's key by using the GitHub API
           $bytes = [System.Text.Encoding]::UTF8.GetBytes($output)
           $content = [Convert]::ToBase64String($bytes)
-          
+
           # Get the current SHA if the file exists
           $sha = ""
           try {
@@ -60,3 +83,55 @@ jobs:
               -f content="$content" `
               -f branch="validation-results"
           }
+
+      - name: Create issue on failed validation
+        if: ${{ steps.run_validation.outputs.error_occurred == 'True' || steps.run_validation.outputs.validation_failed == 'True' }}
+        uses: actions/github-script@v7
+        env:
+          VALIDATION_REASON: ${{ steps.run_validation.outputs.validation_reason }}
+          ERROR_OCCURRED: ${{ steps.run_validation.outputs.error_occurred }}
+          VALIDATION_FAILED: ${{ steps.run_validation.outputs.validation_failed }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+
+            // Check if an open issue with "signature validation" in the title already exists
+            const q = `repo:${owner}/${repo} "signature validation" in:title is:issue is:open`;
+            const { data: search } = await github.rest.search.issuesAndPullRequests({ q });
+
+            if (search.total_count > 0) {
+              core.info('An open "signature validation" issue already exists. Skipping issue creation.');
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            const reason = process.env.VALIDATION_REASON || 'Unknown reason';
+            const errorOccurred = process.env.ERROR_OCCURRED === 'True';
+            const validationFailed = process.env.VALIDATION_FAILED === 'True';
+
+            let body;
+            if (errorOccurred) {
+              body =
+                `@MakotoE, an error occurred while running signature validation.\n` +
+                `Error: ${reason}\n` +
+                `Run: ${runUrl}`;
+            } else if (validationFailed) {
+              body =
+                `@MakotoE, signature validation failed.\n` +
+                `Reason: ${reason}\n` +
+                `Run: ${runUrl}`;
+            } else {
+              body =
+                `@MakotoE, there was an issue with the workflow run\n` +
+                `Details: ${reason}\n` +
+                `Run: ${runUrl}`;
+            }
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: '⚠️ Signature validation failed',
+              body,
+            });
