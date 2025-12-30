@@ -18,16 +18,16 @@ import (
 // clicks the "Download Now" span, and returns the new URL.
 func ClickEmEditorDownload(page playwright.Page) (string, error) {
 	if _, err := page.Goto("https://www.emeditor.com/download/"); err != nil {
-		return "", fmt.Errorf("failed to navigate to emeditor.com: %w", err)
+		return "", errors.Errorf("failed to navigate to emeditor.com: %w", err)
 	}
 
 	// Get the URL on the install link
 	href, err := page.Locator("text=64-bit Installer").GetAttribute("href")
 	if err != nil {
-		return "", fmt.Errorf("failed to read href for '64-bit Installer': %w", err)
+		return "", errors.Errorf("failed to read href for '64-bit Installer': %w", err)
 	}
 	if href == "" {
-		return "", fmt.Errorf("'64-bit Installer' link has no href")
+		return "", errors.Errorf("'64-bit Installer' link has no href")
 	}
 
 	// After navigation completes, return the current page URL.
