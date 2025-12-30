@@ -14,7 +14,7 @@ import (
 )
 
 var client = &http.Client{
-	Timeout: 10 * time.Second,
+	Timeout: 20 * time.Second,
 }
 
 // downloadToTemp downloads a file from the given URL to a temporary directory.
