@@ -34,7 +34,6 @@ jobs:
         run: |
           $output = .\signature-validation.exe
           $output | Out-File -FilePath status.json -Encoding utf8
-          # Optional: echo output to logs
           $output
 
       - name: Parse validation result
