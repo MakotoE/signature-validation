@@ -11,7 +11,59 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/playwright-community/playwright-go"
 )
+
+// ClickEmEditorDownload navigates to https://www.emeditor.com/,
+// clicks the "Download Now" span, and returns the new URL.
+func ClickEmEditorDownload(page playwright.Page) (string, error) {
+	if _, err := page.Goto("https://www.emeditor.com/download/"); err != nil {
+		return "", errors.Errorf("failed to navigate to emeditor.com: %w", err)
+	}
+
+	// Get the URL on the install link
+	href, err := page.Locator("text=64-bit Installer").GetAttribute("href")
+	if err != nil {
+		return "", errors.Errorf("failed to read href for '64-bit Installer': %w", err)
+	}
+	if href == "" {
+		return "", errors.Errorf("'64-bit Installer' link has no href")
+	}
+
+	// After navigation completes, return the current page URL.
+	return href, nil
+}
+
+// GetDownloadLink clicks on the Download Now button and returns the location of the redirect.
+func GetDownloadLink() (string, error) {
+	pw, err := playwright.Run()
+	if err != nil {
+		return "", errors.Errorf("could not start Playwright: %w", err)
+	}
+	defer func() {
+		if err := pw.Stop(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	browser, err := pw.Chromium.Launch()
+	if err != nil {
+		return "", errors.Errorf("could not launch browser: %w", err)
+	}
+	defer func() {
+		if err := browser.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	page, err := browser.NewPage()
+	if err != nil {
+		return "", errors.Errorf("could not create page: %w", err)
+	}
+
+	// Run the download click flow; ignore the URL, only surface errors.
+	return ClickEmEditorDownload(page)
+}
 
 var client = &http.Client{
 	Timeout: 20 * time.Second,
@@ -217,9 +269,16 @@ func validateSignature(info SignatureInfo) ValidationResult {
 }
 
 func mainWithError() (*ValidationResult, error) {
-	// Example usage
-	url := "https://download.emeditor.info/emed64_25.4.3.msi"
-	path, err := downloadToTemp(url)
+	fmt.Fprintf(os.Stderr, "Getting download link\n")
+
+	downloadURL, err := GetDownloadLink()
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(os.Stderr, "Downloading from %s\n", downloadURL)
+
+	path, err := downloadToTemp(downloadURL)
 	if err != nil {
 		return nil, err
 	}
