@@ -239,11 +239,14 @@ func mainWithError() (*ValidationResult, error) {
 type ProgramOutput struct {
 	Result *ValidationResult `json:"result,omitempty"`
 	Error  string            `json:"error,omitempty"`
+	Time   time.Time         `json:"time"`
 }
 
 func main() {
 	result, err := mainWithError()
-	output := ProgramOutput{}
+	output := ProgramOutput{
+		Time: time.Now().UTC(),
+	}
 	if err != nil {
 		var goErr *errors.Error
 		if errors.As(err, &goErr) {
