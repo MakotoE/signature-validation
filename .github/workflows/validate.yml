@@ -2,7 +2,7 @@ name: Validate signature
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '*/10 * * * *'
 
 jobs:
   validate:
