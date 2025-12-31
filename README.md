@@ -1,19 +1,27 @@
-This repo is used to verify the download link for emeditor.com. Every 10 minutes, `main.go` is executed. It uses a browser to navigate to https://www.emeditor.com/download/, find the download hyperlink, then downloads the installer file. The script then uses `Get-AuthenticodeSignature` to validate the signature and check the expected fields of the signature.
+# Signature Validation
 
-The output of the script is written to [`status.json`](https://github.com/Emurasoft/signature-validation/blob/validation-results/status.json) in the `validation-results` branch.
+This repository verifies the download link for [emeditor.com](https://www.emeditor.com/).
 
-If the signature is valid, `status.json` looks like this:
+Every 10 minutes, `main.go` is executed to:
+1. Navigate to the [download page](https://www.emeditor.com/download/).
+2. Locate and download the installer file.
+3. Validate the digital signature using `Get-AuthenticodeSignature`.
 
+## Results
+
+The output is saved to [`status.json`](https://github.com/Emurasoft/signature-validation/blob/validation-results/status.json) in the `validation-results` branch.
+
+### Valid Signature
 ```json
 {"result":{"valid":true},"time":"..."}
 ```
 
-If the signature is invalid, then `status.json` will show `{"valid":false}` with a reason.
+### Invalid Signature
+The `status.json` file will show `{"valid":false}` along with the reason.
 
-If the script had an error, it would look like:
-
+### Script Error
 ```json
 {"error":"..."}
 ```
 
-If the signature was invalid or the script had an error, it creates a new issue to alert Makoto.
+If the signature is invalid or a script error occurs, a new issue is created to alert Makoto.
