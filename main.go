@@ -22,12 +22,12 @@ func ClickEmEditorDownload(page playwright.Page) (string, error) {
 	}
 
 	// Get the URL on the install link
-	href, err := page.Locator("text=64-bit Installer").GetAttribute("href")
+	href, err := page.Locator("a[aria-label='Download Desktop Installer directly']").GetAttribute("href")
 	if err != nil {
-		return "", errors.Errorf("failed to read href for '64-bit Installer': %w", err)
+		return "", errors.Errorf("failed to read href for 'Download Desktop Installer directly': %w", err)
 	}
 	if href == "" {
-		return "", errors.Errorf("'64-bit Installer' link has no href")
+		return "", errors.Errorf("'Download Desktop Installer directly' link has no href")
 	}
 
 	// After navigation completes, return the current page URL.
