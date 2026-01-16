@@ -2,7 +2,8 @@ name: Validate signature
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    # Offset to avoid peak times
+    - cron: '8,18,28,38,48,58 * * * *'
 
 jobs:
   validate:
