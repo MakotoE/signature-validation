@@ -1,5 +1,7 @@
 # Signature Validation
 
+[![Validate signature](https://github.com/Emurasoft/signature-validation/actions/workflows/validate.yml/badge.svg)](https://github.com/Emurasoft/signature-validation/actions/workflows/validate.yml)
+
 This repository verifies the download link for [emeditor.com](https://www.emeditor.com/).
 
 Every 10 minutes, `main.go` is executed to:
